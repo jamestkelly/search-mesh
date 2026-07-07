@@ -8,7 +8,7 @@ resolver = "3"
 [workspace.package]
 edition = "2024"
 license = "MIT"
-repository = "https://github.com/jimkelly/search-mesh"
+repository = "https://github.com/jamestkelly/search-mesh"
 
 [workspace.lints.clippy]
 unwrap_used = "deny"
