@@ -55,11 +55,11 @@ Scans target directories for multiple keywords and returns line-oriented matches
   "id": 2,
   "method": "tools/call",
   "params": {
-  "name": "scan",
-  "arguments": {
-    "targetDirs": ["src/"],
-    "keywords": ["TODO", "FIXME", "deprecated"]
-  }
+    "name": "scan",
+    "arguments": {
+      "targetDirs": ["src/"],
+      "keywords": ["TODO", "FIXME", "deprecated"]
+    }
   }
 }
 ```
