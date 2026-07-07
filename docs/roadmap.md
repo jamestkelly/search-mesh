@@ -23,10 +23,9 @@
 
 ## Phase 3: AST Probe
 
-- Add tree-sitter runtime.
-- Support Rust first.
-- Add TypeScript or JavaScript second.
-- Validate matches against node types.
+- Add tree-sitter runtime. Done for Rust, Python, JavaScript, and TypeScript.
+- Validate matches against node types. Done for initial aliases.
+- Expand supported languages based on agent use cases.
 
 ## Phase 4: Squeezer
 

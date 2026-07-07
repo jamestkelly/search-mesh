@@ -17,6 +17,12 @@ The example sends two requests:
 
 Each input line is one JSON-RPC request. Each output line is one JSON-RPC response.
 
+## Run The AST Probe Example
+
+```sh
+cargo run --package search-mesh-mcp < examples/ast-probe-request.jsonl
+```
+
 ## List Tools
 
 ```sh
@@ -52,3 +58,37 @@ The `scan` result is returned as an MCP content payload. The `text` field contai
 - `keywords`: array of case-sensitive keywords to find.
 
 The scanner respects ignore files, skips non-files, and skips unreadable or non-UTF-8 files.
+
+## Call `ast_probe`
+
+```sh
+printf '%s\n' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"ast_probe","arguments":{"filePath":"crates/search-mesh-core/src/scan.rs","queryPattern":"scan_keywords","nodeType":"function"}}}' \
+  | cargo run --quiet --package search-mesh-mcp
+```
+
+The `ast_probe` result is returned as an MCP content payload. The `text` field contains a JSON object:
+
+```json
+{
+  "isValid": true,
+  "nodeType": "function_item",
+  "startLine": 31,
+  "endLine": 74
+}
+```
+
+Supported file extensions:
+
+- Rust: `.rs`
+- Python: `.py`
+- JavaScript: `.js`, `.jsx`, `.mjs`, `.cjs`
+- TypeScript: `.ts`, `.tsx`
+
+Supported aliases:
+
+- Rust: `function`, `struct`, `impl`, `enum`
+- Python: `function`, `class`
+- JavaScript: `function`, `class`
+- TypeScript: `function`, `class`, `interface`
+
+You can also pass a raw tree-sitter node kind as `nodeType` when no alias exists.
