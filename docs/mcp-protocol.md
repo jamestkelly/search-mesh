@@ -50,6 +50,19 @@ Lists available tools.
           },
           "required": ["filePath", "queryPattern", "nodeType"]
         }
+      },
+      {
+        "name": "squeeze",
+        "description": "Return the AST-bounded source block around a matched pattern.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filePath": { "type": "string" },
+            "queryPattern": { "type": "string" },
+            "nodeType": { "type": "string" }
+          },
+          "required": ["filePath", "queryPattern", "nodeType"]
+        }
       }
     ]
   }
@@ -148,7 +161,42 @@ Raw tree-sitter node kinds may also be passed as `nodeType`.
 
 Returns the nearest useful AST-bounded block around a match.
 
-Status: planned.
+Uses the same file extensions and `nodeType` aliases as `ast_probe`. If no matching block is found, the MCP text payload contains `null`.
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/call",
+  "params": {
+    "name": "squeeze",
+    "arguments": {
+      "filePath": "src/main.rs",
+      "queryPattern": "delete_user",
+      "nodeType": "function"
+    }
+  }
+}
+```
+
+### Response
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"file\":\"src/main.rs\",\"nodeType\":\"function_item\",\"startLine\":31,\"endLine\":74,\"text\":\"pub fn delete_user() {\\n    // ...\\n}\"}"
+      }
+    ]
+  }
+}
+```
 
 ## Tool: `patch`
 

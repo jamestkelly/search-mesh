@@ -1,7 +1,8 @@
 use std::{io, path::PathBuf};
 
 use search_mesh_core::{
-    ProbeRequest, ProbeResponse, ScanMatch, ScanRequest, ast_probe, scan_keywords,
+    ProbeRequest, ProbeResponse, ScanMatch, ScanRequest, SqueezeRequest, SqueezeResponse,
+    ast_probe, scan_keywords, squeeze,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -43,6 +44,14 @@ struct AstProbeArgs {
     node_type: String,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SqueezeArgs {
+    file_path: PathBuf,
+    query_pattern: String,
+    node_type: String,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ScanMatchPayload {
@@ -59,6 +68,16 @@ struct ProbeResponsePayload {
     node_type: Option<String>,
     start_line: Option<usize>,
     end_line: Option<usize>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SqueezeResponsePayload {
+    file: String,
+    node_type: String,
+    start_line: usize,
+    end_line: usize,
+    text: String,
 }
 
 pub fn handle_jsonrpc(input: &str) -> String {
@@ -93,6 +112,7 @@ fn dispatch_tool_call(id: Option<Value>, params: Value) -> Value {
     match params.name.as_str() {
         "scan" => call_scan(id, params.arguments),
         "ast_probe" => call_ast_probe(id, params.arguments),
+        "squeeze" => call_squeeze(id, params.arguments),
         name => jsonrpc_error(id, -32602, format!("unsupported tool: {name}")),
     }
 }
@@ -136,6 +156,29 @@ fn call_ast_probe(id: Option<Value>, arguments: Value) -> Value {
     }
 }
 
+fn call_squeeze(id: Option<Value>, arguments: Value) -> Value {
+    let arguments = match serde_json::from_value::<SqueezeArgs>(arguments) {
+        Ok(arguments) => arguments,
+        Err(error) => {
+            return jsonrpc_error(id, -32602, format!("invalid squeeze args: {error}"));
+        }
+    };
+
+    let request = SqueezeRequest {
+        file_path: arguments.file_path,
+        query_pattern: arguments.query_pattern,
+        node_type: arguments.node_type,
+    };
+
+    match squeeze(&request) {
+        Ok(Some(response)) => {
+            jsonrpc_result(id, content_payload(squeeze_response_payload(response)))
+        }
+        Ok(None) => jsonrpc_result(id, content_payload(Value::Null)),
+        Err(error) => jsonrpc_error(id, -32603, error.to_string()),
+    }
+}
+
 fn scan_matches_payload(matches: Vec<ScanMatch>) -> Vec<ScanMatchPayload> {
     matches
         .into_iter()
@@ -154,6 +197,16 @@ fn probe_response_payload(response: ProbeResponse) -> ProbeResponsePayload {
         node_type: response.node_type,
         start_line: response.start_line,
         end_line: response.end_line,
+    }
+}
+
+fn squeeze_response_payload(response: SqueezeResponse) -> SqueezeResponsePayload {
+    SqueezeResponsePayload {
+        file: response.file.display().to_string(),
+        node_type: response.node_type,
+        start_line: response.start_line,
+        end_line: response.end_line,
+        text: response.text,
     }
 }
 
@@ -181,6 +234,19 @@ fn tools_list() -> Value {
             {
                 "name": "ast_probe",
                 "description": "Validate whether a pattern appears inside a requested syntax node type.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "filePath": { "type": "string" },
+                        "queryPattern": { "type": "string" },
+                        "nodeType": { "type": "string" }
+                    },
+                    "required": ["filePath", "queryPattern", "nodeType"]
+                }
+            },
+            {
+                "name": "squeeze",
+                "description": "Return the AST-bounded source block around a matched pattern.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -252,6 +318,7 @@ mod tests {
         assert_eq!(response["id"], 1);
         assert_eq!(response["result"]["tools"][0]["name"], "scan");
         assert_eq!(response["result"]["tools"][1]["name"], "ast_probe");
+        assert_eq!(response["result"]["tools"][2]["name"], "squeeze");
 
         Ok(())
     }
@@ -329,6 +396,45 @@ mod tests {
         assert_eq!(probe["isValid"], true);
         assert_eq!(probe["nodeType"], "function_item");
         assert_eq!(probe["startLine"], 1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn calls_squeeze() -> Result<(), Box<dyn std::error::Error>> {
+        let root = TempDir::new()?;
+        let file_path = root.path().join("lib.rs");
+        fs::write(
+            &file_path,
+            "fn other() {}\n\npub fn route_context() {\n    println!(\"ok\");\n}\n",
+        )?;
+
+        let request = json!({
+            "jsonrpc": "2.0",
+            "id": 5,
+            "method": "tools/call",
+            "params": {
+                "name": "squeeze",
+                "arguments": {
+                    "filePath": file_path,
+                    "queryPattern": "route_context",
+                    "nodeType": "function"
+                }
+            }
+        });
+        let response = response_value(&request.to_string())?;
+        let text = response["result"]["content"][0]["text"]
+            .as_str()
+            .ok_or("missing text content")?;
+        let squeezed: Value = serde_json::from_str(text)?;
+
+        assert_eq!(response["id"], 5);
+        assert_eq!(squeezed["nodeType"], "function_item");
+        assert_eq!(squeezed["startLine"], 3);
+        assert_eq!(
+            squeezed["text"],
+            "pub fn route_context() {\n    println!(\"ok\");\n}"
+        );
 
         Ok(())
     }
