@@ -55,6 +55,7 @@ tag="$( (curl -fsSL "https://api.github.com/repos/${REPO}/releases" |
 [ -n "${tag}" ] || fail "${BIN_NAME}: could not resolve latest release. ${manual_install_hint}"
 
 archive="${BIN_NAME}-${target}.tar.gz"
+checksum_file="${BIN_NAME}-${target}.sha256"
 base_url="https://github.com/${REPO}/releases/download/${tag}"
 
 workdir="$(mktemp -d)"
@@ -62,15 +63,15 @@ trap 'rm -rf "${workdir}"' EXIT
 
 curl -fsSL -o "${workdir}/${archive}" "${base_url}/${archive}" ||
   fail "${BIN_NAME}: failed to download ${archive} from release ${tag}."
-curl -fsSL -o "${workdir}/${archive}.sha256" "${base_url}/${archive}.sha256" ||
+curl -fsSL -o "${workdir}/${checksum_file}" "${base_url}/${checksum_file}" ||
   fail "${BIN_NAME}: failed to download checksum for ${archive} from release ${tag}."
 
 (
   cd "${workdir}"
   if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum -c "${archive}.sha256" >&2
+    sha256sum -c "${checksum_file}" >&2
   elif command -v shasum >/dev/null 2>&1; then
-    shasum -a 256 -c "${archive}.sha256" >&2
+    shasum -a 256 -c "${checksum_file}" >&2
   else
     exit 2
   fi
