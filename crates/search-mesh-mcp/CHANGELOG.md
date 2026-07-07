@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2](https://github.com/jamestkelly/search-mesh/compare/search-mesh-mcp-v0.1.1...search-mesh-mcp-v0.1.2) - 2026-07-07
+
+### Other
+
+- release-artifact-only bump to publish `search-mesh-mcp` binaries with `.sha256` checksums, required by the plugin's auto-install launcher script ([#13](https://github.com/jamestkelly/search-mesh/pull/13))
+
 ## [0.1.1](https://github.com/jamestkelly/search-mesh/compare/search-mesh-mcp-v0.1.0...search-mesh-mcp-v0.1.1) - 2026-07-07
 
 ### Added
