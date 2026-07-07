@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use thiserror::Error;
 
+const SUPPORTED_PROTOCOL_VERSION: &str = "2025-06-18";
+
 #[derive(Debug, Error)]
 pub enum ServerError {
     #[error(transparent)]
@@ -99,17 +101,23 @@ struct PatchResponsePayload {
     syntax_valid: Option<bool>,
 }
 
-pub fn handle_jsonrpc(input: &str) -> String {
-    let response = match serde_json::from_str::<JsonRpcRequest>(input) {
-        Ok(request) => dispatch(request),
-        Err(error) => jsonrpc_error(None, -32700, format!("parse error: {error}")),
+pub fn handle_jsonrpc(input: &str) -> Option<String> {
+    let request = match serde_json::from_str::<JsonRpcRequest>(input) {
+        Ok(request) => request,
+        Err(error) => {
+            return Some(jsonrpc_error(None, -32700, format!("parse error: {error}")).to_string());
+        }
     };
 
-    response.to_string()
+    // JSON-RPC notifications (no `id`) never receive a response.
+    request.id.as_ref()?;
+
+    Some(dispatch(request).to_string())
 }
 
 fn dispatch(request: JsonRpcRequest) -> Value {
     match request.method.as_str() {
+        "initialize" => call_initialize(request.id, request.params),
         "tools/list" => jsonrpc_result(request.id, tools_list()),
         "tools/call" => dispatch_tool_call(request.id, request.params),
         method => jsonrpc_error(
@@ -118,6 +126,27 @@ fn dispatch(request: JsonRpcRequest) -> Value {
             format!("unsupported JSON-RPC method: {method}"),
         ),
     }
+}
+
+fn call_initialize(id: Option<Value>, params: Value) -> Value {
+    let protocol_version = params
+        .get("protocolVersion")
+        .and_then(Value::as_str)
+        .unwrap_or(SUPPORTED_PROTOCOL_VERSION);
+
+    jsonrpc_result(
+        id,
+        json!({
+            "protocolVersion": protocol_version,
+            "capabilities": {
+                "tools": {}
+            },
+            "serverInfo": {
+                "name": "search-mesh",
+                "version": env!("CARGO_PKG_VERSION")
+            }
+        }),
+    )
 }
 
 fn dispatch_tool_call(id: Option<Value>, params: Value) -> Value {
@@ -380,12 +409,49 @@ mod tests {
 
     use tempfile::TempDir;
 
-    fn response_value(input: &str) -> serde_json::Result<Value> {
-        serde_json::from_str(&handle_jsonrpc(input))
+    fn response_value(input: &str) -> Result<Value, Box<dyn std::error::Error>> {
+        let response =
+            handle_jsonrpc(input).ok_or("expected a response for a request with an id")?;
+        Ok(serde_json::from_str(&response)?)
     }
 
     #[test]
-    fn lists_scan_tool() -> serde_json::Result<()> {
+    fn handles_initialize_handshake() -> Result<(), Box<dyn std::error::Error>> {
+        let response = response_value(
+            r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"test-client","version":"1.0.0"}}}"#,
+        )?;
+
+        assert_eq!(response["id"], 1);
+        assert_eq!(response["result"]["protocolVersion"], "2025-06-18");
+        assert_eq!(response["result"]["serverInfo"]["name"], "search-mesh");
+        assert!(response["result"]["capabilities"]["tools"].is_object());
+
+        Ok(())
+    }
+
+    #[test]
+    fn initialize_falls_back_to_default_protocol_version() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let response =
+            response_value(r#"{"jsonrpc":"2.0","id":2,"method":"initialize","params":{}}"#)?;
+
+        assert_eq!(
+            response["result"]["protocolVersion"],
+            SUPPORTED_PROTOCOL_VERSION
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn returns_no_response_for_notifications() {
+        let response = handle_jsonrpc(r#"{"jsonrpc":"2.0","method":"notifications/initialized"}"#);
+
+        assert_eq!(response, None);
+    }
+
+    #[test]
+    fn lists_scan_tool() -> Result<(), Box<dyn std::error::Error>> {
         let response = response_value(r#"{"jsonrpc":"2.0","id":1,"method":"tools/list"}"#)?;
 
         assert_eq!(response["jsonrpc"], "2.0");
@@ -432,7 +498,7 @@ mod tests {
     }
 
     #[test]
-    fn rejects_unknown_tool() -> serde_json::Result<()> {
+    fn rejects_unknown_tool() -> Result<(), Box<dyn std::error::Error>> {
         let response = response_value(
             r#"{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"missing_tool"}}"#,
         )?;

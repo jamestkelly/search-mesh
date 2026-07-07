@@ -37,6 +37,9 @@ jobs:
       - name: Run tests
         run: cargo test --workspace
 
+      - name: Run initialize handshake example
+        run: cargo run --quiet --package search-mesh-mcp < examples/initialize-request.jsonl
+
       - name: Run scan example
         run: cargo run --quiet --package search-mesh-mcp < examples/scan-request.jsonl
 

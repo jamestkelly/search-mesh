@@ -9,7 +9,7 @@ The goal is to reduce agent latency and token waste by moving repository search,
 This repository is in early setup. The current focus is a small, correct MVP:
 
 - A Rust workspace with separate core and MCP crates.
-- A JSON-RPC over stdio server suitable for Claude Code, OpenCode, and other MCP-compatible agents.
+- A JSON-RPC over stdio server implementing the MCP `initialize` lifecycle handshake, suitable for Claude Code, OpenCode, and other MCP-compatible agents.
 - A first search tool, `scan`, backed by multi-keyword scanning.
 - A syntax probe tool, `ast_probe`, backed by tree-sitter for Rust, Python, JavaScript, and TypeScript.
 - A context extraction tool, `squeeze`, that returns AST-bounded source blocks.
@@ -25,6 +25,58 @@ SIMD acceleration, tree-sitter verification, semantic squeezing, and atomic patc
 - `patch`: apply byte-offset edits and verify syntax after mutation.
 
 See `docs/usage.md` for local examples and `docs/mcp-protocol.md` for the draft protocol.
+
+## Install
+
+`search-mesh-mcp` is published to crates.io and as prebuilt GitHub Release binaries.
+
+**Via cargo:**
+
+```sh
+cargo install search-mesh-mcp
+```
+
+**Via prebuilt binary:** download `search-mesh-mcp-<target>.tar.gz` for your platform (macOS arm64, macOS x64, or Linux x64) from the [Releases page](https://github.com/jamestkelly/search-mesh/releases), extract it, and put `search-mesh-mcp` on your `PATH`.
+
+### Configure Claude Code
+
+Add to `.mcp.json` at your project root:
+
+```json
+{
+  "mcpServers": {
+    "search-mesh": {
+      "command": "search-mesh-mcp",
+      "args": []
+    }
+  }
+}
+```
+
+### Configure OpenCode
+
+Add to `opencode.jsonc`:
+
+```jsonc
+{
+  "mcp": {
+    "search-mesh": {
+      "type": "local",
+      "command": ["search-mesh-mcp"],
+      "enabled": true
+    }
+  }
+}
+```
+
+### Agent Skill
+
+`skill/search-mesh/SKILL.md` is a template that teaches an agent when to prefer `scan`, `ast_probe`, `squeeze`, and `patch` over shell tools like `grep`, `cat`, and `sed`. Copy it into your own skills directory:
+
+```sh
+mkdir -p ~/.claude/skills/search-mesh
+cp skill/search-mesh/SKILL.md ~/.claude/skills/search-mesh/SKILL.md
+```
 
 ## Repository Layout
 
@@ -43,6 +95,8 @@ examples/
   squeeze-request.jsonl
   patch-request.jsonl
   patch-target.txt
+skill/
+  search-mesh/SKILL.md  Agent skill template teaching when to use these tools.
 ```
 
 ## Development

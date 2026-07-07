@@ -12,9 +12,10 @@ fn main() -> Result<(), ServerError> {
             continue;
         }
 
-        let response = handle_jsonrpc(&line);
-        writeln!(stdout, "{response}")?;
-        stdout.flush()?;
+        if let Some(response) = handle_jsonrpc(&line) {
+            writeln!(stdout, "{response}")?;
+            stdout.flush()?;
+        }
     }
 
     Ok(())

@@ -2,6 +2,8 @@
 
 Search-Mesh currently exposes a newline-delimited JSON-RPC stdio server through the `search-mesh-mcp` binary.
 
+See the README's [Install](../README.md#install) section for `cargo install`/binary download instructions and Claude Code/OpenCode configuration. See `skill/search-mesh/SKILL.md` for an agent skill template describing when to prefer these tools over shell commands.
+
 ## Run The Server With An Example Request
 
 From the repository root:
@@ -16,6 +18,16 @@ The example sends two requests:
 - `tools/call`: calls `scan` across `crates/` and `docs/`.
 
 Each input line is one JSON-RPC request. Each output line is one JSON-RPC response.
+
+## Run The Initialize Handshake Example
+
+Real MCP clients send `initialize` before calling any tools. This example demonstrates the handshake, including a `notifications/initialized` notification that correctly produces no output:
+
+```sh
+cargo run --package search-mesh-mcp < examples/initialize-request.jsonl
+```
+
+You should see exactly two output lines (for the `initialize` and `tools/list` requests) — nothing for the notification line in between.
 
 ## Run The AST Probe Example
 

@@ -2,6 +2,51 @@
 
 Search-Mesh communicates over JSON-RPC stdio using newline-delimited MCP-style requests.
 
+## Method: `initialize`
+
+Performs the MCP lifecycle handshake. Real MCP clients (Claude Code, OpenCode) send this before calling any tools.
+
+The server echoes back whatever `protocolVersion` the client requests. If none is provided, it falls back to its own supported version.
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2025-06-18",
+    "capabilities": {},
+    "clientInfo": { "name": "example-client", "version": "1.0.0" }
+  }
+}
+```
+
+### Response
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "protocolVersion": "2025-06-18",
+    "capabilities": { "tools": {} },
+    "serverInfo": { "name": "search-mesh", "version": "0.1.0" }
+  }
+}
+```
+
+### `notifications/initialized`
+
+After `initialize`, clients send a JSON-RPC notification (no `id`) to signal readiness:
+
+```json
+{"jsonrpc":"2.0","method":"notifications/initialized"}
+```
+
+Per JSON-RPC 2.0, notifications never receive a response. Search-Mesh writes nothing to stdout for any message without an `id`.
+
 ## Method: `tools/list`
 
 Lists available tools.
