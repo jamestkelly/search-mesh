@@ -28,6 +28,21 @@ See `docs/usage.md` for local examples and `docs/mcp-protocol.md` for the draft 
 
 ## Install
 
+### Claude Code Plugin (Recommended)
+
+This repository is a self-hosted Claude Code plugin marketplace. It bundles the `search-mesh` MCP server registration and the agent skill together, so `/plugin install` wires up both in one step:
+
+```
+/plugin marketplace add jamestkelly/search-mesh
+/plugin install search-mesh@search-mesh
+```
+
+On macOS and Linux, the plugin downloads and verifies the correct prebuilt `search-mesh-mcp` binary automatically the first time it's used — no separate install step. Windows isn't supported by the automatic installer yet; use `cargo install search-mesh-mcp` or a manual binary install there.
+
+### Manual Install
+
+For OpenCode, or Claude Code configured manually rather than through the plugin, `search-mesh-mcp` needs to be on your `PATH` first.
+
 `search-mesh-mcp` is published to crates.io and as prebuilt GitHub Release binaries.
 
 **Via cargo:**
@@ -38,22 +53,9 @@ cargo install search-mesh-mcp
 
 **Via prebuilt binary:** download `search-mesh-mcp-<target>.tar.gz` for your platform (macOS arm64, macOS x64, or Linux x64) from the [Releases page](https://github.com/jamestkelly/search-mesh/releases), extract it, and put `search-mesh-mcp` on your `PATH`.
 
-Whichever method you use, `search-mesh-mcp` must be on your `PATH` before continuing below.
+#### Configure Claude Code Manually
 
-### Claude Code Plugin (Recommended)
-
-This repository is a self-hosted Claude Code plugin marketplace. It bundles the `search-mesh` MCP server registration and the agent skill together, so `/plugin install` wires up both in one step:
-
-```
-/plugin marketplace add jamestkelly/search-mesh
-/plugin install search-mesh@search-mesh
-```
-
-This does not install the `search-mesh-mcp` binary itself — install it first via one of the methods above.
-
-### Configure Claude Code Manually
-
-Alternatively, add to `.mcp.json` at your project root:
+Add to `.mcp.json` at your project root:
 
 ```json
 {
@@ -66,7 +68,7 @@ Alternatively, add to `.mcp.json` at your project root:
 }
 ```
 
-### Configure OpenCode
+#### Configure OpenCode
 
 Add to `opencode.jsonc`:
 
@@ -113,6 +115,8 @@ examples/
   squeeze-request.jsonl
   patch-request.jsonl
   patch-target.txt
+scripts/
+  search-mesh-mcp-launcher.sh  Installs search-mesh-mcp on first use (macOS/Linux), then execs it.
 skills/
   search-mesh/SKILL.md  Agent skill teaching when to use these tools.
 ```
@@ -146,7 +150,7 @@ Releases are prepared with `release-plz` from Conventional Commits:
 
 - `release-plz` opens a release PR that bumps `Cargo.toml`/`Cargo.lock` versions and updates the changelog.
 - Merging that PR to `main` creates a git tag and GitHub Release per changed package, and publishes both crates to crates.io.
-- When a `search-mesh-mcp-v*` release is published, the `Release Binaries` workflow builds and attaches `search-mesh-mcp` binaries for macOS (arm64, x64) and Linux (x64) as release assets.
+- When a `search-mesh-mcp-v*` release is published, the `Release Binaries` workflow builds and attaches `search-mesh-mcp` binaries (plus a `.sha256` checksum file for each) for macOS (arm64, x64) and Linux (x64) as release assets.
 
 ## Design Principles
 
