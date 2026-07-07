@@ -10,16 +10,16 @@ This repository is in early setup. The current focus is a small, correct MVP:
 
 - A Rust workspace with separate core and MCP crates.
 - A JSON-RPC over stdio server suitable for Claude Code, OpenCode, and other MCP-compatible agents.
-- A first search tool, `pulse_hyper_scan`, backed by multi-keyword scanning.
+- A first search tool, `scan`, backed by multi-keyword scanning.
 
 SIMD acceleration, tree-sitter verification, semantic squeezing, and atomic patching are planned phases, not current guarantees.
 
 ## Intended Tools
 
-- `pulse_hyper_scan`: scan target directories for multiple keywords in one pass.
-- `pulse_ast_probe`: validate raw hits against syntax tree node types.
-- `pulse_squeeze`: return the smallest useful AST-bounded code block around a hit.
-- `pulse_patch`: apply byte-offset edits and verify syntax after mutation.
+- `scan`: scan target directories for multiple keywords in one pass.
+- `ast_probe`: validate raw hits against syntax tree node types.
+- `squeeze`: return the smallest useful AST-bounded code block around a hit.
+- `patch`: apply byte-offset edits and verify syntax after mutation.
 
 See `docs/mcp-protocol.md` for the draft protocol.
 

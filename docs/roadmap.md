@@ -9,7 +9,7 @@
 
 ## Phase 1: Scan MVP
 
-- Implement `pulse_hyper_scan`.
+- Implement `scan`.
 - Use `ignore` for repository traversal.
 - Use `aho-corasick` for multi-keyword matching.
 - Return file path, one-based line number, keyword, and matching line text.
@@ -19,7 +19,7 @@
 
 - Implement JSON-RPC stdio loop.
 - Support MCP `tools/list` and `tools/call`.
-- Dispatch `pulse_hyper_scan` through `search-mesh-core`.
+- Dispatch `scan` through `search-mesh-core`.
 
 ## Phase 3: AST Probe
 

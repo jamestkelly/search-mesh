@@ -1,8 +1,49 @@
 # MCP Protocol Draft
 
-Search-Mesh communicates over JSON-RPC stdio using MCP-style `tools/call` requests.
+Search-Mesh communicates over JSON-RPC stdio using newline-delimited MCP-style requests.
 
-## Tool: `pulse_hyper_scan`
+## Method: `tools/list`
+
+Lists available tools.
+
+### Request
+
+```json
+{"jsonrpc":"2.0","id":1,"method":"tools/list"}
+```
+
+### Response
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "tools": [
+      {
+        "name": "scan",
+        "description": "Scan target directories for multiple keywords.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "targetDirs": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "keywords": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "required": ["targetDirs", "keywords"]
+        }
+      }
+    ]
+  }
+}
+```
+
+## Tool: `scan`
 
 Scans target directories for multiple keywords and returns line-oriented matches.
 
@@ -10,10 +51,15 @@ Scans target directories for multiple keywords and returns line-oriented matches
 
 ```json
 {
-  "name": "pulse_hyper_scan",
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+  "name": "scan",
   "arguments": {
     "targetDirs": ["src/"],
     "keywords": ["TODO", "FIXME", "deprecated"]
+  }
   }
 }
 ```
@@ -22,16 +68,20 @@ Scans target directories for multiple keywords and returns line-oriented matches
 
 ```json
 {
-  "content": [
-    {
-      "type": "text",
-      "text": "[{\"file\":\"src/main.rs\",\"line\":142,\"keyword\":\"TODO\",\"matchStr\":\"// TODO: Refactor AhoNode initialization\"}]"
-    }
-  ]
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[{\"file\":\"src/main.rs\",\"line\":142,\"keyword\":\"TODO\",\"matchStr\":\"// TODO: Refactor AhoNode initialization\"}]"
+      }
+    ]
+  }
 }
 ```
 
-## Tool: `pulse_ast_probe`
+## Tool: `ast_probe`
 
 Validates whether a pattern appears in a requested syntax node type.
 
@@ -39,7 +89,7 @@ Validates whether a pattern appears in a requested syntax node type.
 
 ```json
 {
-  "name": "pulse_ast_probe",
+  "name": "ast_probe",
   "arguments": {
     "filePath": "src/main.rs",
     "queryPattern": "AhoNode",
@@ -61,13 +111,13 @@ Validates whether a pattern appears in a requested syntax node type.
 }
 ```
 
-## Tool: `pulse_squeeze`
+## Tool: `squeeze`
 
 Returns the nearest useful AST-bounded block around a match.
 
 Status: planned.
 
-## Tool: `pulse_patch`
+## Tool: `patch`
 
 Applies byte-offset edits and verifies the resulting file.
 

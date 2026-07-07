@@ -30,7 +30,7 @@ The core crate must not depend on the MCP crate. This keeps the engine testable 
 The first useful version should implement only:
 
 - JSON-RPC stdio server startup.
-- `pulse_hyper_scan` request parsing.
+- `scan` request parsing.
 - Recursive directory scanning with ignore-file support.
 - Multi-keyword matching using the `aho-corasick` crate.
 - Unit tests for match coordinates and response shape.
