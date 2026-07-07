@@ -37,6 +37,19 @@ Lists available tools.
           },
           "required": ["targetDirs", "keywords"]
         }
+      },
+      {
+        "name": "ast_probe",
+        "description": "Validate whether a pattern appears inside a requested syntax node type.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filePath": { "type": "string" },
+            "queryPattern": { "type": "string" },
+            "nodeType": { "type": "string" }
+          },
+          "required": ["filePath", "queryPattern", "nodeType"]
+        }
       }
     ]
   }
@@ -85,15 +98,31 @@ Scans target directories for multiple keywords and returns line-oriented matches
 
 Validates whether a pattern appears in a requested syntax node type.
 
+Supported file extensions: `.rs`, `.py`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.ts`, `.tsx`.
+
+Supported aliases:
+
+- Rust: `function`, `struct`, `impl`, `enum`
+- Python: `function`, `class`
+- JavaScript: `function`, `class`
+- TypeScript: `function`, `class`, `interface`
+
+Raw tree-sitter node kinds may also be passed as `nodeType`.
+
 ### Request
 
 ```json
 {
-  "name": "ast_probe",
-  "arguments": {
-    "filePath": "src/main.rs",
-    "queryPattern": "AhoNode",
-    "nodeType": "struct"
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "ast_probe",
+    "arguments": {
+      "filePath": "src/main.rs",
+      "queryPattern": "AhoNode",
+      "nodeType": "struct"
+    }
   }
 }
 ```
@@ -102,12 +131,16 @@ Validates whether a pattern appears in a requested syntax node type.
 
 ```json
 {
-  "content": [
-    {
-      "type": "text",
-      "text": "{\"isValid\":true,\"nodeType\":\"struct_definition\",\"startLine\":12,\"endLine\":48}"
-    }
-  ]
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"isValid\":true,\"nodeType\":\"struct_item\",\"startLine\":12,\"endLine\":48}"
+      }
+    ]
+  }
 }
 ```
 

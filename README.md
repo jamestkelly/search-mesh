@@ -11,6 +11,7 @@ This repository is in early setup. The current focus is a small, correct MVP:
 - A Rust workspace with separate core and MCP crates.
 - A JSON-RPC over stdio server suitable for Claude Code, OpenCode, and other MCP-compatible agents.
 - A first search tool, `scan`, backed by multi-keyword scanning.
+- A syntax probe tool, `ast_probe`, backed by tree-sitter for Rust, Python, JavaScript, and TypeScript.
 
 SIMD acceleration, tree-sitter verification, semantic squeezing, and atomic patching are planned phases, not current guarantees.
 
@@ -36,6 +37,7 @@ docs/
   usage.md            Local MCP usage examples.
 examples/
   scan-request.jsonl  Example newline-delimited JSON-RPC requests.
+  ast-probe-request.jsonl
 ```
 
 ## Development

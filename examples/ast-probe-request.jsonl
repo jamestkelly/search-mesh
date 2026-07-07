@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"ast_probe","arguments":{"filePath":"crates/search-mesh-core/src/scan.rs","queryPattern":"scan_keywords","nodeType":"function"}}}
