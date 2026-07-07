@@ -63,6 +63,29 @@ Lists available tools.
           },
           "required": ["filePath", "queryPattern", "nodeType"]
         }
+      },
+      {
+        "name": "patch",
+        "description": "Apply a 1-based line/column text replacement and report syntax validity.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filePath": { "type": "string" },
+            "startLine": { "type": "integer" },
+            "startColumn": { "type": "integer" },
+            "endLine": { "type": "integer" },
+            "endColumn": { "type": "integer" },
+            "replacement": { "type": "string" }
+          },
+          "required": [
+            "filePath",
+            "startLine",
+            "startColumn",
+            "endLine",
+            "endColumn",
+            "replacement"
+          ]
+        }
       }
     ]
   }
@@ -200,9 +223,47 @@ Uses the same file extensions and `nodeType` aliases as `ast_probe`. If no match
 
 ## Tool: `patch`
 
-Applies byte-offset edits and verifies the resulting file.
+Applies a 1-based line/column text replacement and reports syntax validity.
 
-Status: planned.
+The edit range is end-exclusive. For supported syntax extensions (`.rs`, `.py`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.ts`, `.tsx`), `syntaxValid` is `true` or `false`. For unsupported extensions, `syntaxValid` is `null`.
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "method": "tools/call",
+  "params": {
+    "name": "patch",
+    "arguments": {
+      "filePath": "src/main.rs",
+      "startLine": 10,
+      "startColumn": 5,
+      "endLine": 10,
+      "endColumn": 12,
+      "replacement": "new_name"
+    }
+  }
+}
+```
+
+### Response
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"file\":\"src/main.rs\",\"bytesWritten\":1234,\"syntaxValid\":true}"
+      }
+    ]
+  }
+}
+```
 
 ## Error Shape
 

@@ -130,15 +130,34 @@ fn parse_request(
     let source = fs::read_to_string(file_path)?;
     let language = language_for_path(file_path)?;
     let target_node_kinds = node_kinds_for_alias(language, node_type);
-    let mut parser = Parser::new();
-    parser.set_language(&language.parser_language())?;
-    let tree = parser.parse(&source, None).ok_or(ProbeError::Parse)?;
+    let tree = parse_source(language, &source)?;
 
     Ok(ParsedSource {
         source,
         tree,
         target_node_kinds,
     })
+}
+
+pub(crate) fn syntax_valid_for_path(path: &Path, source: &str) -> Result<Option<bool>, ProbeError> {
+    let language = match language_for_path(path) {
+        Ok(language) => language,
+        Err(ProbeError::UnsupportedFileExtension(_)) => return Ok(None),
+        Err(error) => return Err(error),
+    };
+
+    let tree = parse_source(language, source)?;
+
+    Ok(Some(!tree.root_node().has_error()))
+}
+
+fn parse_source(
+    language: SupportedLanguage,
+    source: &str,
+) -> Result<tree_sitter::Tree, ProbeError> {
+    let mut parser = Parser::new();
+    parser.set_language(&language.parser_language())?;
+    parser.parse(source, None).ok_or(ProbeError::Parse)
 }
 
 fn valid_response(node: Node<'_>) -> ProbeResponse {

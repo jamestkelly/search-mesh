@@ -1,8 +1,8 @@
 use std::{io, path::PathBuf};
 
 use search_mesh_core::{
-    ProbeRequest, ProbeResponse, ScanMatch, ScanRequest, SqueezeRequest, SqueezeResponse,
-    ast_probe, scan_keywords, squeeze,
+    PatchRequest, PatchResponse, ProbeRequest, ProbeResponse, ScanMatch, ScanRequest,
+    SqueezeRequest, SqueezeResponse, apply_patch, ast_probe, scan_keywords, squeeze,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -52,6 +52,17 @@ struct SqueezeArgs {
     node_type: String,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PatchArgs {
+    file_path: PathBuf,
+    start_line: usize,
+    start_column: usize,
+    end_line: usize,
+    end_column: usize,
+    replacement: String,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ScanMatchPayload {
@@ -78,6 +89,14 @@ struct SqueezeResponsePayload {
     start_line: usize,
     end_line: usize,
     text: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PatchResponsePayload {
+    file: String,
+    bytes_written: usize,
+    syntax_valid: Option<bool>,
 }
 
 pub fn handle_jsonrpc(input: &str) -> String {
@@ -113,6 +132,7 @@ fn dispatch_tool_call(id: Option<Value>, params: Value) -> Value {
         "scan" => call_scan(id, params.arguments),
         "ast_probe" => call_ast_probe(id, params.arguments),
         "squeeze" => call_squeeze(id, params.arguments),
+        "patch" => call_patch(id, params.arguments),
         name => jsonrpc_error(id, -32602, format!("unsupported tool: {name}")),
     }
 }
@@ -179,6 +199,29 @@ fn call_squeeze(id: Option<Value>, arguments: Value) -> Value {
     }
 }
 
+fn call_patch(id: Option<Value>, arguments: Value) -> Value {
+    let arguments = match serde_json::from_value::<PatchArgs>(arguments) {
+        Ok(arguments) => arguments,
+        Err(error) => {
+            return jsonrpc_error(id, -32602, format!("invalid patch args: {error}"));
+        }
+    };
+
+    let request = PatchRequest {
+        file_path: arguments.file_path,
+        start_line: arguments.start_line,
+        start_column: arguments.start_column,
+        end_line: arguments.end_line,
+        end_column: arguments.end_column,
+        replacement: arguments.replacement,
+    };
+
+    match apply_patch(&request) {
+        Ok(response) => jsonrpc_result(id, content_payload(patch_response_payload(response))),
+        Err(error) => jsonrpc_error(id, -32603, error.to_string()),
+    }
+}
+
 fn scan_matches_payload(matches: Vec<ScanMatch>) -> Vec<ScanMatchPayload> {
     matches
         .into_iter()
@@ -207,6 +250,14 @@ fn squeeze_response_payload(response: SqueezeResponse) -> SqueezeResponsePayload
         start_line: response.start_line,
         end_line: response.end_line,
         text: response.text,
+    }
+}
+
+fn patch_response_payload(response: PatchResponse) -> PatchResponsePayload {
+    PatchResponsePayload {
+        file: response.file.display().to_string(),
+        bytes_written: response.bytes_written,
+        syntax_valid: response.syntax_valid,
     }
 }
 
@@ -255,6 +306,29 @@ fn tools_list() -> Value {
                         "nodeType": { "type": "string" }
                     },
                     "required": ["filePath", "queryPattern", "nodeType"]
+                }
+            },
+            {
+                "name": "patch",
+                "description": "Apply a 1-based line/column text replacement and report syntax validity.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "filePath": { "type": "string" },
+                        "startLine": { "type": "integer" },
+                        "startColumn": { "type": "integer" },
+                        "endLine": { "type": "integer" },
+                        "endColumn": { "type": "integer" },
+                        "replacement": { "type": "string" }
+                    },
+                    "required": [
+                        "filePath",
+                        "startLine",
+                        "startColumn",
+                        "endLine",
+                        "endColumn",
+                        "replacement"
+                    ]
                 }
             }
         ]
@@ -319,6 +393,7 @@ mod tests {
         assert_eq!(response["result"]["tools"][0]["name"], "scan");
         assert_eq!(response["result"]["tools"][1]["name"], "ast_probe");
         assert_eq!(response["result"]["tools"][2]["name"], "squeeze");
+        assert_eq!(response["result"]["tools"][3]["name"], "patch");
 
         Ok(())
     }
@@ -434,6 +509,44 @@ mod tests {
         assert_eq!(
             squeezed["text"],
             "pub fn route_context() {\n    println!(\"ok\");\n}"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn calls_patch() -> Result<(), Box<dyn std::error::Error>> {
+        let root = TempDir::new()?;
+        let file_path = root.path().join("lib.rs");
+        fs::write(&file_path, "fn main() {\n    old_name();\n}\n")?;
+
+        let request = json!({
+            "jsonrpc": "2.0",
+            "id": 6,
+            "method": "tools/call",
+            "params": {
+                "name": "patch",
+                "arguments": {
+                    "filePath": file_path,
+                    "startLine": 2,
+                    "startColumn": 5,
+                    "endLine": 2,
+                    "endColumn": 13,
+                    "replacement": "new_name"
+                }
+            }
+        });
+        let response = response_value(&request.to_string())?;
+        let text = response["result"]["content"][0]["text"]
+            .as_str()
+            .ok_or("missing text content")?;
+        let patch: Value = serde_json::from_str(text)?;
+
+        assert_eq!(response["id"], 6);
+        assert_eq!(patch["syntaxValid"], true);
+        assert_eq!(
+            fs::read_to_string(root.path().join("lib.rs"))?,
+            "fn main() {\n    new_name();\n}\n"
         );
 
         Ok(())

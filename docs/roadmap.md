@@ -35,9 +35,9 @@
 
 ## Phase 5: Patch
 
-- Translate line/column edits to byte offsets.
-- Apply in-memory edits.
-- Reparse and reject syntactically invalid changes.
+- Translate line/column edits to byte offsets. Done.
+- Apply in-memory edits. Done.
+- Reparse supported syntax and report validity. Done.
 
 ## Phase 6: Performance Work
 

@@ -13,6 +13,7 @@ This repository is in early setup. The current focus is a small, correct MVP:
 - A first search tool, `scan`, backed by multi-keyword scanning.
 - A syntax probe tool, `ast_probe`, backed by tree-sitter for Rust, Python, JavaScript, and TypeScript.
 - A context extraction tool, `squeeze`, that returns AST-bounded source blocks.
+- A patch tool, `patch`, that applies precise line/column edits and reports syntax validity.
 
 SIMD acceleration, tree-sitter verification, semantic squeezing, and atomic patching are planned phases, not current guarantees.
 
@@ -40,6 +41,8 @@ examples/
   scan-request.jsonl  Example newline-delimited JSON-RPC requests.
   ast-probe-request.jsonl
   squeeze-request.jsonl
+  patch-request.jsonl
+  patch-target.txt
 ```
 
 ## Development

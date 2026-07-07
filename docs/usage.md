@@ -29,6 +29,15 @@ cargo run --package search-mesh-mcp < examples/ast-probe-request.jsonl
 cargo run --package search-mesh-mcp < examples/squeeze-request.jsonl
 ```
 
+## Run The Patch Example
+
+The patch example writes to `/tmp/search-mesh-patch-target.txt` so the repository fixture remains unchanged:
+
+```sh
+cp examples/patch-target.txt /tmp/search-mesh-patch-target.txt
+cargo run --package search-mesh-mcp < examples/patch-request.jsonl
+```
+
 ## List Tools
 
 ```sh
@@ -119,3 +128,23 @@ The `squeeze` result is returned as an MCP content payload. The `text` field con
 ```
 
 If no matching AST block is found, the `text` field contains `null`.
+
+## Call `patch`
+
+```sh
+cp examples/patch-target.txt /tmp/search-mesh-patch-target.txt
+printf '%s\n' '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"patch","arguments":{"filePath":"/tmp/search-mesh-patch-target.txt","startLine":1,"startColumn":7,"endLine":1,"endColumn":10,"replacement":"new"}}}' \
+  | cargo run --quiet --package search-mesh-mcp
+```
+
+The `patch` result is returned as an MCP content payload. The `text` field contains a JSON object:
+
+```json
+{
+  "file": "/tmp/search-mesh-patch-target.txt",
+  "bytesWritten": 10,
+  "syntaxValid": null
+}
+```
+
+Patch coordinates are 1-based. The end coordinate is exclusive.

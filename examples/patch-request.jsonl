@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"patch","arguments":{"filePath":"/tmp/search-mesh-patch-target.txt","startLine":1,"startColumn":7,"endLine":1,"endColumn":10,"replacement":"new"}}}
