@@ -1,0 +1,49 @@
+name: Review
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust:
+    name: Rust checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Run tests
+        run: cargo test --workspace
+
+      - name: Run scan example
+        run: cargo run --quiet --package search-mesh-mcp < examples/scan-request.jsonl
+
+      - name: Run AST probe example
+        run: cargo run --quiet --package search-mesh-mcp < examples/ast-probe-request.jsonl
+
+      - name: Run squeeze example
+        run: cargo run --quiet --package search-mesh-mcp < examples/squeeze-request.jsonl
+
+      - name: Run patch example
+        run: |
+          cp examples/patch-target.txt /tmp/search-mesh-patch-target.txt
+          cargo run --quiet --package search-mesh-mcp < examples/patch-request.jsonl
