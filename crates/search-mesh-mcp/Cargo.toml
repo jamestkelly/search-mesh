@@ -1,6 +1,6 @@
 [package]
 name = "search-mesh-mcp"
-version = "0.1.0"
+version = "0.1.1"
 description = "MCP JSON-RPC stdio server exposing Search-Mesh's scan, ast_probe, squeeze, and patch tools."
 edition.workspace = true
 license.workspace = true
