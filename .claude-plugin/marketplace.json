@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
   "name": "search-mesh",
   "owner": {
-    "name": "James Kelly"
+    "name": "jamestkelly"
   },
   "plugins": [
     {
