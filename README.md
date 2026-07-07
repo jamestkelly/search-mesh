@@ -21,7 +21,7 @@ SIMD acceleration, tree-sitter verification, semantic squeezing, and atomic patc
 - `squeeze`: return the smallest useful AST-bounded code block around a hit.
 - `patch`: apply byte-offset edits and verify syntax after mutation.
 
-See `docs/mcp-protocol.md` for the draft protocol.
+See `docs/usage.md` for local examples and `docs/mcp-protocol.md` for the draft protocol.
 
 ## Repository Layout
 
@@ -33,6 +33,9 @@ docs/
   architecture.md     System shape and phased design.
   mcp-protocol.md     Tool schemas and response shapes.
   roadmap.md          Near-term implementation plan.
+  usage.md            Local MCP usage examples.
+examples/
+  scan-request.jsonl  Example newline-delimited JSON-RPC requests.
 ```
 
 ## Development
