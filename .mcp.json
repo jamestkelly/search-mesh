@@ -1,0 +1,6 @@
+{
+  "search-mesh": {
+    "command": "${CLAUDE_PLUGIN_ROOT}/scripts/search-mesh-mcp-launcher.sh",
+    "args": []
+  }
+}
