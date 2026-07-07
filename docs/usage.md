@@ -23,6 +23,12 @@ Each input line is one JSON-RPC request. Each output line is one JSON-RPC respon
 cargo run --package search-mesh-mcp < examples/ast-probe-request.jsonl
 ```
 
+## Run The Squeeze Example
+
+```sh
+cargo run --package search-mesh-mcp < examples/squeeze-request.jsonl
+```
+
 ## List Tools
 
 ```sh
@@ -92,3 +98,24 @@ Supported aliases:
 - TypeScript: `function`, `class`, `interface`
 
 You can also pass a raw tree-sitter node kind as `nodeType` when no alias exists.
+
+## Call `squeeze`
+
+```sh
+printf '%s\n' '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"squeeze","arguments":{"filePath":"crates/search-mesh-core/src/scan.rs","queryPattern":"scan_keywords","nodeType":"function"}}}' \
+  | cargo run --quiet --package search-mesh-mcp
+```
+
+The `squeeze` result is returned as an MCP content payload. The `text` field contains a JSON object with the AST-bounded source block:
+
+```json
+{
+  "file": "crates/search-mesh-core/src/scan.rs",
+  "nodeType": "function_item",
+  "startLine": 31,
+  "endLine": 74,
+  "text": "pub fn scan_keywords(...) { ... }"
+}
+```
+
+If no matching AST block is found, the `text` field contains `null`.

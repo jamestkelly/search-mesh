@@ -29,8 +29,8 @@
 
 ## Phase 4: Squeezer
 
-- Traverse parent AST nodes from a match coordinate.
-- Return the smallest self-contained structural block.
+- Traverse parent AST nodes from a match coordinate. Done for the initial supported languages.
+- Return the smallest self-contained structural block. Done for exact AST node text.
 - Preserve enough imports or enclosing context only when required.
 
 ## Phase 5: Patch
