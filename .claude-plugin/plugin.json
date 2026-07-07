@@ -1,0 +1,12 @@
+{
+  "name": "search-mesh",
+  "description": "Codebase intelligence for coding agents: fast multi-keyword scan, tree-sitter AST probing, context squeezing, and precise patch tools via MCP.",
+  "author": {
+    "name": "James Kelly"
+  },
+  "homepage": "https://github.com/jamestkelly/search-mesh",
+  "repository": "https://github.com/jamestkelly/search-mesh",
+  "license": "MIT",
+  "keywords": ["mcp", "search", "ast", "tree-sitter", "codebase-intelligence"],
+  "mcpServers": "./.mcp.json"
+}

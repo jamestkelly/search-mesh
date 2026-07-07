@@ -2,7 +2,7 @@
 
 Search-Mesh currently exposes a newline-delimited JSON-RPC stdio server through the `search-mesh-mcp` binary.
 
-See the README's [Install](../README.md#install) section for `cargo install`/binary download instructions and Claude Code/OpenCode configuration. See `skill/search-mesh/SKILL.md` for an agent skill template describing when to prefer these tools over shell commands.
+See the README's [Install](../README.md#install) section for `cargo install`/binary download instructions, the Claude Code plugin, and manual OpenCode/Claude Code configuration. See `skills/search-mesh/SKILL.md` for an agent skill template describing when to prefer these tools over shell commands.
 
 ## Run The Server With An Example Request
 

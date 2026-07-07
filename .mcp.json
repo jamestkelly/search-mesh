@@ -1,0 +1,6 @@
+{
+  "search-mesh": {
+    "command": "search-mesh-mcp",
+    "args": []
+  }
+}

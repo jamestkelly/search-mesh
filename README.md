@@ -38,9 +38,22 @@ cargo install search-mesh-mcp
 
 **Via prebuilt binary:** download `search-mesh-mcp-<target>.tar.gz` for your platform (macOS arm64, macOS x64, or Linux x64) from the [Releases page](https://github.com/jamestkelly/search-mesh/releases), extract it, and put `search-mesh-mcp` on your `PATH`.
 
-### Configure Claude Code
+Whichever method you use, `search-mesh-mcp` must be on your `PATH` before continuing below.
 
-Add to `.mcp.json` at your project root:
+### Claude Code Plugin (Recommended)
+
+This repository is a self-hosted Claude Code plugin marketplace. It bundles the `search-mesh` MCP server registration and the agent skill together, so `/plugin install` wires up both in one step:
+
+```
+/plugin marketplace add jamestkelly/search-mesh
+/plugin install search-mesh@search-mesh
+```
+
+This does not install the `search-mesh-mcp` binary itself — install it first via one of the methods above.
+
+### Configure Claude Code Manually
+
+Alternatively, add to `.mcp.json` at your project root:
 
 ```json
 {
@@ -71,16 +84,20 @@ Add to `opencode.jsonc`:
 
 ### Agent Skill
 
-`skill/search-mesh/SKILL.md` is a template that teaches an agent when to prefer `scan`, `ast_probe`, `squeeze`, and `patch` over shell tools like `grep`, `cat`, and `sed`. Copy it into your own skills directory:
+The Claude Code plugin install above already includes this skill. To install it manually for other agents/setups, `skills/search-mesh/SKILL.md` teaches an agent when to prefer `scan`, `ast_probe`, `squeeze`, and `patch` over shell tools like `grep`, `cat`, and `sed`. Copy it into your own skills directory:
 
 ```sh
 mkdir -p ~/.claude/skills/search-mesh
-cp skill/search-mesh/SKILL.md ~/.claude/skills/search-mesh/SKILL.md
+cp skills/search-mesh/SKILL.md ~/.claude/skills/search-mesh/SKILL.md
 ```
 
 ## Repository Layout
 
 ```text
+.claude-plugin/
+  plugin.json       Claude Code plugin manifest.
+  marketplace.json  Self-hosted marketplace catalog listing this plugin.
+.mcp.json           Bundled MCP server registration (used by the plugin).
 crates/
   search-mesh-core/   Core search, parsing, squeezing, and patching logic.
   search-mesh-mcp/    JSON-RPC/MCP stdio server.
@@ -91,12 +108,13 @@ docs/
   usage.md            Local MCP usage examples.
 examples/
   scan-request.jsonl  Example newline-delimited JSON-RPC requests.
+  initialize-request.jsonl
   ast-probe-request.jsonl
   squeeze-request.jsonl
   patch-request.jsonl
   patch-target.txt
-skill/
-  search-mesh/SKILL.md  Agent skill template teaching when to use these tools.
+skills/
+  search-mesh/SKILL.md  Agent skill teaching when to use these tools.
 ```
 
 ## Development
