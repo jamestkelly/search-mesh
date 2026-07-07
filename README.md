@@ -73,7 +73,7 @@ Pull requests and pushes to `main` run the `Review` workflow:
 Releases are prepared with `release-plz` from Conventional Commits:
 
 - `release-plz` opens a release PR that bumps `Cargo.toml`/`Cargo.lock` versions and updates the changelog.
-- Merging that PR to `main` creates a git tag and GitHub Release per changed package. Crates are not published to crates.io (`publish = false`).
+- Merging that PR to `main` creates a git tag and GitHub Release per changed package, and publishes both crates to crates.io.
 - When a `search-mesh-mcp-v*` release is published, the `Release Binaries` workflow builds and attaches `search-mesh-mcp` binaries for macOS (arm64, x64) and Linux (x64) as release assets.
 
 ## Design Principles
