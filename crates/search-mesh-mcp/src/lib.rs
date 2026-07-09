@@ -258,7 +258,7 @@ fn scan_matches_payload(matches: Vec<ScanMatch>) -> Vec<ScanMatchPayload> {
             file: scan_match.file.display().to_string(),
             line: scan_match.line,
             keyword: scan_match.keyword,
-            match_str: scan_match.match_str,
+            match_str: scan_match.match_str.to_string(),
         })
         .collect()
 }

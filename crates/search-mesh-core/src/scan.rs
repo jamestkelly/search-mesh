@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf};
+use std::{fs, path::PathBuf, sync::Arc};
 
 use aho_corasick::AhoCorasick;
 use ignore::WalkBuilder;
@@ -15,7 +15,7 @@ pub struct ScanMatch {
     pub file: PathBuf,
     pub line: usize,
     pub keyword: String,
-    pub match_str: String,
+    pub match_str: Arc<str>,
 }
 
 #[derive(Debug, Error)]
@@ -58,12 +58,21 @@ pub fn scan_keywords(request: &ScanRequest) -> Result<Vec<ScanMatch>, ScanError>
             };
 
             for (line_index, line) in content.lines().enumerate() {
+                let mut line_arc: Option<Arc<str>> = None;
                 for mat in matcher.find_iter(line) {
+                    let match_str = match &line_arc {
+                        Some(arc) => arc.clone(),
+                        None => {
+                            let arc: Arc<str> = Arc::from(line);
+                            line_arc = Some(arc.clone());
+                            arc
+                        }
+                    };
                     matches.push(ScanMatch {
                         file: path.to_path_buf(),
                         line: line_index + 1,
                         keyword: request.keywords[mat.pattern()].clone(),
-                        match_str: line.to_string(),
+                        match_str,
                     });
                 }
             }
@@ -133,7 +142,7 @@ mod tests {
         assert_eq!(matches.len(), 2);
         assert_eq!(matches[0].line, 2);
         assert_eq!(matches[0].keyword, "TODO");
-        assert_eq!(matches[0].match_str, "    // TODO: remove deprecated path");
+        assert_eq!(&*matches[0].match_str, "    // TODO: remove deprecated path");
         assert_eq!(matches[1].line, 2);
         assert_eq!(matches[1].keyword, "deprecated");
 
@@ -177,7 +186,7 @@ mod tests {
 
         assert_eq!(matches.len(), 1);
         assert!(matches[0].file.ends_with("visible.rs"));
-        assert_eq!(matches[0].match_str, "// TODO: visible");
+        assert_eq!(&*matches[0].match_str, "// TODO: visible");
 
         Ok(())
     }
