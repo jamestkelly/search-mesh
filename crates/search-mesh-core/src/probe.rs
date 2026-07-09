@@ -151,7 +151,7 @@ pub(crate) fn syntax_valid_for_path(path: &Path, source: &str) -> Result<Option<
     Ok(Some(!tree.root_node().has_error()))
 }
 
-fn parse_source(
+pub(crate) fn parse_source(
     language: SupportedLanguage,
     source: &str,
 ) -> Result<tree_sitter::Tree, ProbeError> {
@@ -169,7 +169,7 @@ fn valid_response(node: Node<'_>) -> ProbeResponse {
     }
 }
 
-fn matching_ancestor<'tree>(
+pub(crate) fn matching_ancestor<'tree>(
     root: Node<'tree>,
     source: &str,
     query_pattern: &str,
@@ -210,7 +210,7 @@ fn find_covering_node(node: Node<'_>, start_byte: usize, end_byte: usize) -> Opt
 }
 
 #[derive(Debug, Clone, Copy)]
-enum SupportedLanguage {
+pub(crate) enum SupportedLanguage {
     Rust,
     Python,
     JavaScript,
@@ -228,7 +228,7 @@ impl SupportedLanguage {
     }
 }
 
-fn language_for_path(path: &Path) -> Result<SupportedLanguage, ProbeError> {
+pub(crate) fn language_for_path(path: &Path) -> Result<SupportedLanguage, ProbeError> {
     let extension = path
         .extension()
         .and_then(|extension| extension.to_str())
@@ -243,7 +243,7 @@ fn language_for_path(path: &Path) -> Result<SupportedLanguage, ProbeError> {
     }
 }
 
-fn node_kinds_for_alias(language: SupportedLanguage, alias: &str) -> Vec<String> {
+pub(crate) fn node_kinds_for_alias(language: SupportedLanguage, alias: &str) -> Vec<String> {
     match (language, alias) {
         (SupportedLanguage::Rust, "function") => vec!["function_item".to_string()],
         (SupportedLanguage::Rust, "struct") => vec!["struct_item".to_string()],

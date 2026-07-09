@@ -2,7 +2,11 @@ use std::{fs, path::PathBuf};
 
 use thiserror::Error;
 
-use crate::probe::{ProbeError, syntax_valid_for_path};
+use crate::probe::{
+    syntax_valid_for_path, language_for_path, parse_source, matching_ancestor,
+    node_kinds_for_alias, ProbeError
+};
+use tree_sitter::Node;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PatchRequest {
@@ -125,6 +129,157 @@ fn line_end_offset(source: &str, line_start: usize) -> usize {
     )
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RenameRequest {
+    pub file_path: PathBuf,
+    pub target: String,
+    pub replacement: String,
+    pub node_type: Option<String>,
+    pub query_pattern: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RenameResponse {
+    pub file: PathBuf,
+    pub bytes_written: usize,
+    pub occurrences_renamed: usize,
+    pub syntax_valid: Option<bool>,
+}
+
+#[derive(Debug, Error)]
+pub enum RenameError {
+    #[error("file path is required")]
+    MissingFilePath,
+    #[error("target identifier is required")]
+    MissingTarget,
+    #[error("replacement identifier is required")]
+    MissingReplacement,
+    #[error("failed to read source file: {0}")]
+    ReadSource(#[source] std::io::Error),
+    #[error("failed to write source file: {0}")]
+    WriteSource(#[source] std::io::Error),
+    #[error(transparent)]
+    Probe(#[from] ProbeError),
+}
+
+pub fn apply_rename(request: &RenameRequest) -> Result<RenameResponse, RenameError> {
+    if request.file_path.as_os_str().is_empty() {
+        return Err(RenameError::MissingFilePath);
+    }
+    if request.target.is_empty() {
+        return Err(RenameError::MissingTarget);
+    }
+    if request.replacement.is_empty() {
+        return Err(RenameError::MissingReplacement);
+    }
+
+    let source = fs::read_to_string(&request.file_path).map_err(RenameError::ReadSource)?;
+    
+    let language = match language_for_path(&request.file_path) {
+        Ok(lang) => lang,
+        Err(ProbeError::UnsupportedFileExtension(_)) => {
+            let ext = request.file_path.extension().and_then(|e| e.to_str()).unwrap_or_default().to_string();
+            return Err(RenameError::Probe(ProbeError::UnsupportedFileExtension(ext)));
+        }
+        Err(err) => return Err(RenameError::Probe(err)),
+    };
+
+    let tree = parse_source(language, &source)?;
+    let root = tree.root_node();
+
+    let scope_range = if let (Some(node_type), Some(query_pattern)) = (&request.node_type, &request.query_pattern) {
+        let target_node_kinds = node_kinds_for_alias(language, node_type);
+        if let Some(scope_node) = matching_ancestor(root, &source, query_pattern, &target_node_kinds) {
+            Some(scope_node.start_byte()..scope_node.end_byte())
+        } else {
+            return Ok(RenameResponse {
+                file: request.file_path.clone(),
+                bytes_written: source.len(),
+                occurrences_renamed: 0,
+                syntax_valid: Some(true),
+            });
+        }
+    } else {
+        None
+    };
+
+    let mut occurrences = Vec::new();
+    find_target_occurrences(root, source.as_bytes(), &request.target, &scope_range, &mut occurrences);
+
+    if occurrences.is_empty() {
+        return Ok(RenameResponse {
+            file: request.file_path.clone(),
+            bytes_written: source.len(),
+            occurrences_renamed: 0,
+            syntax_valid: Some(true),
+        });
+    }
+
+    occurrences.sort_by(|a, b| b.0.cmp(&a.0));
+
+    let mut updated = source;
+    let occurrences_renamed = occurrences.len();
+    for (start, end) in occurrences {
+        updated.replace_range(start..end, &request.replacement);
+    }
+
+    let syntax_valid = syntax_valid_for_path(&request.file_path, &updated)?;
+    fs::write(&request.file_path, updated.as_bytes()).map_err(RenameError::WriteSource)?;
+
+    Ok(RenameResponse {
+        file: request.file_path.clone(),
+        bytes_written: updated.len(),
+        occurrences_renamed,
+        syntax_valid,
+    })
+}
+
+fn find_target_occurrences(
+    node: Node<'_>,
+    source: &[u8],
+    target: &str,
+    scope_range: &Option<std::ops::Range<usize>>,
+    occurrences: &mut Vec<(usize, usize)>,
+) {
+    if let Some(range) = scope_range {
+        if node.start_byte() > range.end || node.end_byte() < range.start {
+            return;
+        }
+    }
+
+    if node.child_count() == 0 {
+        if let Ok(text) = node.utf8_text(source) {
+            if text == target && !is_inside_comment_or_string(node) {
+                let start = node.start_byte();
+                let end = node.end_byte();
+                let in_scope = match scope_range {
+                    Some(range) => start >= range.start && end <= range.end,
+                    None => true,
+                };
+                if in_scope {
+                    occurrences.push((start, end));
+                }
+            }
+        }
+    }
+
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        find_target_occurrences(child, source, target, scope_range, occurrences);
+    }
+}
+
+fn is_inside_comment_or_string(mut node: Node<'_>) -> bool {
+    while let Some(parent) = node.parent() {
+        let kind = parent.kind();
+        if kind.contains("comment") || kind.contains("string") {
+            return true;
+        }
+        node = parent;
+    }
+    false
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -223,6 +378,85 @@ mod tests {
             error,
             PatchError::InvalidUtf8Boundary { line: 1, column: 2 }
         ));
+
+        Ok(())
+    }
+
+    #[test]
+    fn renames_all_occurrences_in_file() -> Result<(), Box<dyn std::error::Error>> {
+        let root = TempDir::new()?;
+        let file_path = write_file(
+            &root,
+            "lib.rs",
+            "fn compute() {\n    let old_val = 5;\n    let double = old_val * 2;\n}\n",
+        )?;
+
+        let response = apply_rename(&RenameRequest {
+            file_path: file_path.clone(),
+            target: "old_val".to_string(),
+            replacement: "new_val".to_string(),
+            node_type: None,
+            query_pattern: None,
+        })?;
+
+        assert_eq!(response.occurrences_renamed, 2);
+        assert_eq!(response.syntax_valid, Some(true));
+        assert_eq!(
+            fs::read_to_string(&file_path)?,
+            "fn compute() {\n    let new_val = 5;\n    let double = new_val * 2;\n}\n"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn renames_only_in_scoped_node() -> Result<(), Box<dyn std::error::Error>> {
+        let root = TempDir::new()?;
+        let file_path = write_file(
+            &root,
+            "lib.rs",
+            "fn keep() {\n    let target = 1;\n}\nfn change() {\n    let target = 2;\n}\n",
+        )?;
+
+        let response = apply_rename(&RenameRequest {
+            file_path: file_path.clone(),
+            target: "target".to_string(),
+            replacement: "replacement".to_string(),
+            node_type: Some("function".to_string()),
+            query_pattern: Some("change".to_string()),
+        })?;
+
+        assert_eq!(response.occurrences_renamed, 1);
+        assert_eq!(
+            fs::read_to_string(&file_path)?,
+            "fn keep() {\n    let target = 1;\n}\nfn change() {\n    let replacement = 2;\n}\n"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn ignores_comments_and_strings() -> Result<(), Box<dyn std::error::Error>> {
+        let root = TempDir::new()?;
+        let file_path = write_file(
+            &root,
+            "lib.rs",
+            "// target in comment\nfn test() {\n    let target = \"target in string\";\n}\n",
+        )?;
+
+        let response = apply_rename(&RenameRequest {
+            file_path: file_path.clone(),
+            target: "target".to_string(),
+            replacement: "replacement".to_string(),
+            node_type: None,
+            query_pattern: None,
+        })?;
+
+        assert_eq!(response.occurrences_renamed, 1);
+        assert_eq!(
+            fs::read_to_string(&file_path)?,
+            "// target in comment\nfn test() {\n    let replacement = \"target in string\";\n}\n"
+        );
 
         Ok(())
     }
