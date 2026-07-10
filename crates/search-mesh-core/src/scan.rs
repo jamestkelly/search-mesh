@@ -142,7 +142,10 @@ mod tests {
         assert_eq!(matches.len(), 2);
         assert_eq!(matches[0].line, 2);
         assert_eq!(matches[0].keyword, "TODO");
-        assert_eq!(&*matches[0].match_str, "    // TODO: remove deprecated path");
+        assert_eq!(
+            &*matches[0].match_str,
+            "    // TODO: remove deprecated path"
+        );
         assert_eq!(matches[1].line, 2);
         assert_eq!(matches[1].keyword, "deprecated");
 
