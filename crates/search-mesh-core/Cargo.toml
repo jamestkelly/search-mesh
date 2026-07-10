@@ -1,6 +1,6 @@
 [package]
 name = "search-mesh-core"
-version = "0.1.0"
+version = "0.1.1"
 description = "Core scanning, tree-sitter AST probing, context squeezing, and patch primitives for Search-Mesh."
 edition.workspace = true
 license.workspace = true

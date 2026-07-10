@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3](https://github.com/jamestkelly/search-mesh/compare/search-mesh-mcp-v0.1.2...search-mesh-mcp-v0.1.3) - 2026-07-10
+
+### Fixed
+
+- *(scan)* avoid redundant per-match allocation of line string ([#23](https://github.com/jamestkelly/search-mesh/pull/23))
+
 ## [0.1.2](https://github.com/jamestkelly/search-mesh/compare/search-mesh-mcp-v0.1.1...search-mesh-mcp-v0.1.2) - 2026-07-07
 
 ### Other
