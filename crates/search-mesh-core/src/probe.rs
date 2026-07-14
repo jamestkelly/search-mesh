@@ -175,38 +175,42 @@ fn matching_ancestor<'tree>(
     query_pattern: &str,
     target_node_kinds: &[String],
 ) -> Option<Node<'tree>> {
-    for (match_start, _) in source.match_indices(query_pattern) {
-        let match_end = match_start + query_pattern.len();
-        if let Some(node) = find_covering_node(root, match_start, match_end) {
-            let mut current = Some(node);
-            while let Some(candidate) = current {
-                if target_node_kinds
-                    .iter()
-                    .any(|kind| kind == candidate.kind())
-                {
-                    return Some(candidate);
+    find_matching_ancestor(root, source.as_bytes(), query_pattern, target_node_kinds)
+}
+
+fn find_matching_ancestor<'tree>(
+    node: Node<'tree>,
+    source: &[u8],
+    query_pattern: &str,
+    target_node_kinds: &[String],
+) -> Option<Node<'tree>> {
+    if node.child_count() == 0 {
+        if let Ok(text) = node.utf8_text(source) {
+            if text == query_pattern {
+                let mut current = Some(node);
+                while let Some(candidate) = current {
+                    if target_node_kinds
+                        .iter()
+                        .any(|kind| kind == candidate.kind())
+                    {
+                        return Some(candidate);
+                    }
+                    current = candidate.parent();
                 }
-                current = candidate.parent();
             }
         }
     }
 
-    None
-}
-
-fn find_covering_node(node: Node<'_>, start_byte: usize, end_byte: usize) -> Option<Node<'_>> {
-    if node.start_byte() > start_byte || node.end_byte() < end_byte {
-        return None;
-    }
-
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        if let Some(match_node) = find_covering_node(child, start_byte, end_byte) {
-            return Some(match_node);
+        if let Some(matched) =
+            find_matching_ancestor(child, source, query_pattern, target_node_kinds)
+        {
+            return Some(matched);
         }
     }
 
-    Some(node)
+    None
 }
 
 #[derive(Debug, Clone, Copy)]
