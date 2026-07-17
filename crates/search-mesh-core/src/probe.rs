@@ -215,6 +215,7 @@ enum SupportedLanguage {
     Python,
     JavaScript,
     TypeScript,
+    Svelte,
 }
 
 impl SupportedLanguage {
@@ -224,6 +225,7 @@ impl SupportedLanguage {
             Self::Python => tree_sitter_python::LANGUAGE.into(),
             Self::JavaScript => tree_sitter_javascript::LANGUAGE.into(),
             Self::TypeScript => tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into(),
+            Self::Svelte => tree_sitter_svelte_ng::LANGUAGE.into(),
         }
     }
 }
@@ -239,6 +241,7 @@ fn language_for_path(path: &Path) -> Result<SupportedLanguage, ProbeError> {
         "py" => Ok(SupportedLanguage::Python),
         "js" | "jsx" | "mjs" | "cjs" => Ok(SupportedLanguage::JavaScript),
         "ts" | "tsx" => Ok(SupportedLanguage::TypeScript),
+        "svelte" => Ok(SupportedLanguage::Svelte),
         extension => Err(ProbeError::UnsupportedFileExtension(extension.to_string())),
     }
 }
@@ -266,6 +269,13 @@ fn node_kinds_for_alias(language: SupportedLanguage, alias: &str) -> Vec<String>
         }
         (SupportedLanguage::TypeScript, "class") => vec!["class_declaration".to_string()],
         (SupportedLanguage::TypeScript, "interface") => vec!["interface_declaration".to_string()],
+        (SupportedLanguage::Svelte, "function") => {
+            vec![
+                "script_element".to_string(),
+                "raw_text".to_string(),
+            ]
+        }
+        (SupportedLanguage::Svelte, "component") => vec!["element".to_string()],
         _ => vec![alias.to_string()],
     }
 }
@@ -424,6 +434,54 @@ mod tests {
         })?;
 
         assert_eq!(response, None);
+
+        Ok(())
+    }
+
+    #[test]
+    fn validates_svelte_function() -> Result<(), Box<dyn std::error::Error>> {
+        let root = TempDir::new()?;
+        let file_path = write_file(
+            &root,
+            "App.svelte",
+            r#"<script>
+  let count = 0;
+  function increment() {
+    count += 1;
+  }
+</script>
+
+<Counter />
+
+<button on:click={increment}>
+  Clicks: {count}
+</button>"#,
+        )?;
+
+        let response = ast_probe(&ProbeRequest {
+            file_path: file_path.clone(),
+            query_pattern: "increment".to_string(),
+            node_type: "function".to_string(),
+        })?;
+
+        assert!(response.is_valid);
+        assert!(
+            response.node_type == Some("script_element".to_string())
+                || response.node_type == Some("raw_text".to_string())
+        );
+
+        let squeeze_response = squeeze(&SqueezeRequest {
+            file_path,
+            query_pattern: "increment".to_string(),
+            node_type: "function".to_string(),
+        })?
+        .ok_or("missing squeeze response")?;
+
+        assert!(
+            squeeze_response.node_type == "script_element"
+                || squeeze_response.node_type == "raw_text"
+        );
+        assert!(squeeze_response.text.contains("function increment()"));
 
         Ok(())
     }
