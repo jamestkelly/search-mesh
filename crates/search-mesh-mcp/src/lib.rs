@@ -1,8 +1,9 @@
 use std::{io, path::PathBuf};
 
 use search_mesh_core::{
-    PatchRequest, PatchResponse, ProbeRequest, ProbeResponse, ScanMatch, ScanRequest,
-    SqueezeRequest, SqueezeResponse, apply_patch, ast_probe, scan_keywords, squeeze,
+    PatchRequest, PatchResponse, ProbeRequest, ProbeResponse, RenameRequest, RenameResponse,
+    ScanMatch, ScanRequest, SqueezeRequest, SqueezeResponse, apply_patch, apply_rename, ast_probe,
+    scan_keywords, squeeze,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -101,6 +102,25 @@ struct PatchResponsePayload {
     syntax_valid: Option<bool>,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RenameArgs {
+    file_path: PathBuf,
+    target: String,
+    replacement: String,
+    node_type: Option<String>,
+    query_pattern: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RenameResponsePayload {
+    file: String,
+    bytes_written: usize,
+    occurrences_renamed: usize,
+    syntax_valid: Option<bool>,
+}
+
 pub fn handle_jsonrpc(input: &str) -> Option<String> {
     let request = match serde_json::from_str::<JsonRpcRequest>(input) {
         Ok(request) => request,
@@ -162,6 +182,7 @@ fn dispatch_tool_call(id: Option<Value>, params: Value) -> Value {
         "ast_probe" => call_ast_probe(id, params.arguments),
         "squeeze" => call_squeeze(id, params.arguments),
         "patch" => call_patch(id, params.arguments),
+        "rename" => call_rename(id, params.arguments),
         name => jsonrpc_error(id, -32602, format!("unsupported tool: {name}")),
     }
 }
@@ -248,6 +269,37 @@ fn call_patch(id: Option<Value>, arguments: Value) -> Value {
     match apply_patch(&request) {
         Ok(response) => jsonrpc_result(id, content_payload(patch_response_payload(response))),
         Err(error) => jsonrpc_error(id, -32603, error.to_string()),
+    }
+}
+
+fn call_rename(id: Option<Value>, arguments: Value) -> Value {
+    let arguments = match serde_json::from_value::<RenameArgs>(arguments) {
+        Ok(arguments) => arguments,
+        Err(error) => {
+            return jsonrpc_error(id, -32602, format!("invalid rename args: {error}"));
+        }
+    };
+
+    let request = RenameRequest {
+        file_path: arguments.file_path,
+        target: arguments.target,
+        replacement: arguments.replacement,
+        node_type: arguments.node_type,
+        query_pattern: arguments.query_pattern,
+    };
+
+    match apply_rename(&request) {
+        Ok(response) => jsonrpc_result(id, content_payload(rename_response_payload(response))),
+        Err(error) => jsonrpc_error(id, -32603, error.to_string()),
+    }
+}
+
+fn rename_response_payload(response: RenameResponse) -> RenameResponsePayload {
+    RenameResponsePayload {
+        file: response.file.display().to_string(),
+        bytes_written: response.bytes_written,
+        occurrences_renamed: response.occurrences_renamed,
+        syntax_valid: response.syntax_valid,
     }
 }
 
@@ -358,6 +410,21 @@ fn tools_list() -> Value {
                         "endColumn",
                         "replacement"
                     ]
+                }
+            },
+            {
+                "name": "rename",
+                "description": "Rename all occurrences of an exact identifier within a file, optionally scoped to a specific AST node.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "filePath": { "type": "string" },
+                        "target": { "type": "string" },
+                        "replacement": { "type": "string" },
+                        "nodeType": { "type": "string" },
+                        "queryPattern": { "type": "string" }
+                    },
+                    "required": ["filePath", "target", "replacement"]
                 }
             }
         ]
